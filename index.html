@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="Generator" content="EditPlus®">
+	<meta name="Author" content="">
+	<meta name="Keywords" content="">
+	<meta name="Description" content="">
+	<title>Document</title>
+</head>
+<body>
+	<form id="form">
+		<p>Get info from public address</p>
+		<label for="address">Ether address</label>
+		<input type="text" id="address" name="address" placeholder="Enter public address" required value="0xa145ac099e3d2e9781c9c848249e2e6b256b030d">
+		<button type="submit">Get info</button>
+	</form>
+	<div id="info"></div>
+	<script>
+		const form = document.getElementById('form');
+		const formAddress = document.getElementById('address');
+		const info = document.getElementById('info');
+
+
+		let getBalance = async function f(address) {
+				try {
+					let url = `https://api.etherscan.io/api?module=account&action=balance&address=${address}&tag=latest&apikey=TN27H2CMJ2YDUBNKJ22SY7MTK2MMZ5KUS1`;
+					let response = await fetch(url);
+					let data = await response.json();
+					return data;
+				} catch(err) {
+					console.log(err);
+				}
+			}
+
+
+		let getTokens = async function f(address) {
+				try {
+					let url = `https://api.etherscan.io/api?module=account&action=tokentx&address=${address}&startblock=0&endblock=999999999&sort=asc&apikey=TN27H2CMJ2YDUBNKJ22SY7MTK2MMZ5KUS1`;
+					let response = await fetch(url);
+					let data = await response.json();
+					return data;
+				} catch(err) {
+					console.log(err);
+				}
+			}
+
+
+		let getInfo = async function getInfo () {
+			try{
+				event.preventDefault();
+				const address = formAddress.value;
+				let table = document.createElement('table');
+
+				let balanceData = await getBalance(address);
+				if (balanceData.message == 'OK') {
+					let b = balanceData.result;
+					let bf1 = b.toString().substring(0, b.length - 18);
+					let bf2 = b.toString().substring(b.length - 18, );
+					let bf = bf1 + '.' + bf2;
+					table.insertAdjacentHTML('beforeend', `
+						<tr>
+							<td>Ethereum</td>
+							<td>${bf}</td>
+							<td>ETH</td>
+						</tr>
+					`);
+				}
+
+				let tokensData = await getTokens(address);
+				console.log('getinfo', tokensData);
+				if (tokensData.message == 'OK') {
+					let tokens = {};
+					let td = tokensData.result.values();
+					for (i of td) {
+						if (!tokens[i.tokenName])	{
+							tokens[i.tokenName] = {'tokenSymbol': i.tokenSymbol, 'tokenDecimal': Number(i.tokenDecimal), 'balance': 0};
+						}
+						let bs = i.value;
+						let d = i['tokenDecimal'];
+						let bf1;
+						let bf2;
+						if (bs.length > d) {
+							bf1 = bs.substring(0, bs.length - d);
+							bf2 = bs.substring(bs.length - d, );
+						}
+						else {
+							bf1 = '0';
+							bf2 = bs;
+						}
+						let bf = `${bf1 ? bf1 : '0'}` + '.' + `${bf2 ? bf2 : '0'}`;
+						console.log(bs, bf1, bf2, bf, Number(bf));
+
+						if (i.to == address) {
+							tokens[i.tokenName]['balance'] += Number(bf);
+							console.log('to', i.tokenName, bf);
+						}
+						if (i.from == address) {
+							tokens[i.tokenName]['balance'] -= Number(bf);
+							console.log('from', i.tokenName, bf);
+						}
+					}
+					for (token in tokens) {
+						table.insertAdjacentHTML('beforeend', `
+							<tr>
+								<td>${token}</td>
+								<td>${tokens[token]['balance']}</td>
+								<td>${tokens[token]['tokenSymbol']}</td>
+							</tr>
+						`);
+					}
+					info.append(table);
+				}
+				else {
+					info.innerHTML =`${tokensData.status}, ${tokensData.message}, ${tokensData.result}`;
+				}
+			}
+			catch (err)	{
+				console.log('error', err);
+			}
+		};
+
+		form.addEventListener('submit', getInfo);
+
+	</script>
+</body>
+</html>
